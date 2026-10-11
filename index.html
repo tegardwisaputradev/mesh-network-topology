@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulator Topologi Jaringan: Mesh</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <h1>Simulator Topologi Jaringan: Mesh</h1>
+        <span style="font-size: 0.85rem; color: #94a3b8;">Informatika XI-F</span>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar Kiri -->
+        <div class="sidebar">
+            <div class="control-group">
+                <h3>Status Mode</h3>
+                <div id="modeStatus" class="status-badge status-manual">Mode: Manual</div>
+                <button id="toggleSimBtn" class="btn-success" onclick="toggleAutoSimulation()">Mulai Simulasi Live</button>
+                
+                <!-- Checkbox Kondisi-->
+                <div class="sim-options" id="simOptionsBox">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="checkGangguanJalur" checked> Munculkan Gangguan Jalur (Auto-Break/Fix)
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="checkDinamisPC"> Muncul/Hilang PC Otomatis (Min. 3 PC)
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Pengatur Jaringan Live</h3>
+                <label style="font-size:0.75rem; color:#94a3b8;">Kecepatan Animasi:</label>
+                <input type="range" id="speedSlider" min="200" max="2000" step="100" value="600" oninput="updateSpeedLabel(this.value)">
+                <div style="font-size: 0.75rem; color: #38bdf8; text-align: right; margin-bottom: 8px;" id="speedLabel">600 ms</div>
+
+                <label style="font-size:0.75rem; color:#94a3b8;">Frekuensi Kirim Paket:</label>
+                <input type="range" id="freqSlider" min="200" max="2000" step="100" value="800" oninput="updateFreqLabel(this.value)">
+                <div style="font-size: 0.75rem; color: #38bdf8; text-align: right;" id="freqLabel">800 ms</div>
+            </div>
+
+            <div class="control-group" id="manualControls">
+                <h3>Mode Manual</h3>
+                <label style="font-size:0.75rem; color:#94a3b8;">Asal:</label>
+                <select id="sourceSelect"></select>
+                
+                <label style="font-size:0.75rem; color:#94a3b8;">Tujuan:</label>
+                <select id="destSelect"></select>
+                <button onclick="simulateSmartRouting()" style="margin-top: 4px;">Kirim Paket</button>
+                
+                <div style="margin-top: 10px; border-top: 1px solid #334155; padding-top: 8px;">
+                    <label style="font-size:0.75rem; color:#94a3b8;">Kontrol Kabel:</label>
+                    <select id="linkSelect"></select>
+                    <button class="btn-warning" onclick="toggleLinkBreak()">Putus / Sambung Kabel</button>
+                    <button class="btn-warning" onclick="randomizeBrokenLinks()" style="background: #7c2d12;">Randomize Jalur Rusak</button>
+                    <button class="btn-secondary" onclick="resetAllLinks()" style="margin-top: 5px; background: #334155;">Pulihkan Semua Jalur</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Kelola Perangkat & Reset</h3>
+                <input type="text" id="nodeNameInput" placeholder="Nama PC (Contoh: PC 6)" value="PC 6">
+                <button onclick="addNodeManual()">Tambah PC</button>
+                <button class="btn-danger" onclick="resetAllNodes()" style="margin-top: 5px;">Reset Semua PC</button>
+            </div>
+        </div>
+
+        <!-- Canvas / Visualisasi -->
+        <div class="canvas-container" id="canvasContainer">
+            <svg id="svgCanvas"></svg>
+        </div>
+
+        <!-- Log Jaringan -->
+        <div class="right-panel">
+            <div class="control-group" style="height: 100%; display: flex; flex-direction: column; margin-bottom: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h3 style="margin-bottom: 0;">Live Network Log</h3>
+                    <button onclick="clearLogs()" style="width: auto; padding: 4px 10px; font-size: 0.75rem; background: #334155; margin-bottom: 0;" title="Bersihkan riwayat log">Hapus Log</button>
+                </div>
+                <div class="log-box-right" id="logBox"></div>
+            </div>
+        </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
