@@ -4,6 +4,7 @@ let selectedNode = null;
 let isDragging = false;
 let activeNodeId = 6;
 let isAutoSimActive = false;
+let isPaused = false;
 let autoSimInterval = null;
 let dynamicEventInterval = null;
 let dynamicNodeInterval = null;
@@ -29,10 +30,38 @@ function updateSpeedLabel(val) {
 
 function updateFreqLabel(val) {
     document.getElementById('freqLabel').innerText = `${val} ms`;
-    if (isAutoSimActive && autoSimInterval) {
+    if (isAutoSimActive && autoSimInterval && !isPaused) {
         clearInterval(autoSimInterval);
         startAutoTrafficInterval();
     }
+}
+
+function togglePauseSimulation() {
+    isPaused = !isPaused;
+    const pauseBtn = document.getElementById('pauseGlobalBtn');
+    if (isPaused) {
+        pauseBtn.className = 'btn-paused';
+        pauseBtn.innerText = 'Resume Simulasi';
+        log(`Simulasi dipause (Dijeda). Pergerakan paket dibekukan.`);
+    } else {
+        pauseBtn.className = 'btn-warning';
+        pauseBtn.style.background = '#b45309';
+        pauseBtn.innerText = 'Pause Simulasi';
+        log(`Simulasi dilanjutkan (Resume).`);
+    }
+}
+
+function reverseSourceDest() {
+    const sourceSelect = document.getElementById('sourceSelect');
+    const destSelect = document.getElementById('destSelect');
+    
+    let temp = sourceSelect.value;
+    sourceSelect.value = destSelect.value;
+    destSelect.value = temp;
+
+    let srcName = sourceSelect.options[sourceSelect.selectedIndex]?.text || "PC";
+    let dstName = destSelect.options[destSelect.selectedIndex]?.text || "PC";
+    log(`Posisi Asal & Tujuan ditukar: [${srcName}] ⇄ [${dstName}]`);
 }
 
 function addNodeManual() {
@@ -130,8 +159,8 @@ function checkNodeIsolation(nodeId) {
     }
 
     if (connectedCount === 0) return 'normal';
-    if (activeConnectionCount === 0) return 'isolated'; // putus total Merah
-    if (activeConnectionCount < connectedCount) return 'warning'; // masih ada jalur lain Oranye
+    if (activeConnectionCount === 0) return 'isolated';
+    if (activeConnectionCount < connectedCount) return 'warning';
     return 'normal';
 }
 
@@ -144,9 +173,9 @@ function updateMeshConnections() {
             el.classList.remove('link-damaged', 'link-warning');
             let status = checkNodeIsolation(n.id);
             if (status === 'isolated') {
-                el.classList.add('link-damaged'); // Merah 
+                el.classList.add('link-damaged');
             } else if (status === 'warning') {
-                el.classList.add('link-warning'); // Oranye
+                el.classList.add('link-warning');
             }
         }
     });
@@ -248,6 +277,7 @@ function resetAllLinks() {
 
 function resetAllNodes() {
     if (isAutoSimActive) toggleAutoSimulation();
+    if (isPaused) togglePauseSimulation();
     nodes = [];
     brokenLinks.clear();
     activePackets = [];
@@ -281,6 +311,32 @@ function findPath(startId, targetId) {
         }
     }
     return null;
+}
+
+function findAlternativePath(startId, targetId, avoidIntermediateIds = []) {
+    let queue = [[startId]];
+    let visited = new Set([startId]);
+
+    while (queue.length > 0) {
+        let path = queue.shift();
+        let currId = path[path.length - 1];
+
+        if (currId === targetId) return path;
+
+        for (let other of nodes) {
+            if (other.id === currId) continue;
+            let linkKey = getLinkKey(currId, other.id);
+
+            if (avoidIntermediateIds.includes(other.id) && other.id !== targetId) continue;
+
+            if (!brokenLinks.has(linkKey) && !visited.has(other.id)) {
+                visited.add(other.id);
+                let newPath = [...path, other.id];
+                queue.push(newPath);
+            }
+        }
+    }
+    return findPath(startId, targetId);
 }
 
 function getRandomColor() {
@@ -340,6 +396,8 @@ function animateStepByStep(pathNodes, stepIndex, color, sourceId, destId) {
 
     let baseDuration = parseInt(document.getElementById('speedSlider').value);
     let startTime = null;
+    let pausedTime = 0;
+    let totalPauseDuration = 0;
 
     let packetData = {
         element: packet,
@@ -353,8 +411,22 @@ function animateStepByStep(pathNodes, stepIndex, color, sourceId, destId) {
 
     function stepAnim(timestamp) {
         if (!packetData.active) return;
+
+        if (isPaused) {
+            if (!pausedTime) pausedTime = timestamp;
+            requestAnimationFrame(stepAnim);
+            return;
+        }
+
+        if (pausedTime) {
+            totalPauseDuration += (timestamp - pausedTime);
+            pausedTime = 0;
+        }
+
         if (!startTime) startTime = timestamp;
-        let progress = (timestamp - startTime) / baseDuration;
+
+        let adjustedTimestamp = timestamp - totalPauseDuration;
+        let progress = (adjustedTimestamp - startTime) / baseDuration;
         if (progress > 1) progress = 1;
 
         let cx = fromNode.x + (toNode.x - fromNode.x) * progress;
@@ -406,32 +478,6 @@ function animateStepByStep(pathNodes, stepIndex, color, sourceId, destId) {
 
     requestAnimationFrame(stepAnim);
 }
-function findAlternativePath(startId, targetId, avoidIntermediateIds = []) {
-    let queue = [[startId]];
-    let visited = new Set([startId]);
-
-    while (queue.length > 0) {
-        let path = queue.shift();
-        let currId = path[path.length - 1];
-
-        if (currId === targetId) return path;
-
-        for (let other of nodes) {
-            if (other.id === currId) continue;
-            let linkKey = getLinkKey(currId, other.id);
-
-            if (avoidIntermediateIds.includes(other.id) && other.id !== targetId) continue;
-
-            if (!brokenLinks.has(linkKey) && !visited.has(other.id)) {
-                visited.add(other.id);
-                let newPath = [...path, other.id];
-                queue.push(newPath);
-            }
-        }
-    }
-    
-    return findPath(startId, targetId);
-}
 
 function triggerCollisionAndRetransmit(x, y, src1Id, dst1Id, src2Id, dst2Id) {
     let src1Node = nodes.find(n => n.id === src1Id);
@@ -468,8 +514,8 @@ function triggerCollisionAndRetransmit(x, y, src1Id, dst1Id, src2Id, dst2Id) {
     let delay2 = 1800 + Math.random() * 800;
 
     setTimeout(() => {
+        if (isPaused) return;
         log(`[Rute Alternatif] Transmisi ulang dari [${name1}]...`);
-        
         const altPathIds = findAlternativePath(src1Id, dst1Id, [src2Id, dst2Id]);
         if (altPathIds && altPathIds.length > 1) {
             let pathNodes = altPathIds.map(id => nodes.find(n => n.id === id));
@@ -481,10 +527,9 @@ function triggerCollisionAndRetransmit(x, y, src1Id, dst1Id, src2Id, dst2Id) {
         }
     }, delay1);
 
-    // Transmisi ulang PC 2
     setTimeout(() => {
+        if (isPaused) return;
         log(`[Rute Alternatif] Transmisi ulang dari [${name2}] (Selesai Antre)...`);
-        
         const altPathIds = findAlternativePath(src2Id, dst2Id, [src1Id, dst1Id]);
         if (altPathIds && altPathIds.length > 1) {
             let pathNodes = altPathIds.map(id => nodes.find(n => n.id === id));
@@ -500,6 +545,7 @@ function triggerCollisionAndRetransmit(x, y, src1Id, dst1Id, src2Id, dst2Id) {
 function startAutoTrafficInterval() {
     let freqVal = parseInt(document.getElementById('freqSlider').value);
     autoSimInterval = setInterval(() => {
+        if (isPaused) return;
         if (nodes.length < 2) return;
         let srcIdx = Math.floor(Math.random() * nodes.length);
         let destIdx;
@@ -515,22 +561,23 @@ function toggleAutoSimulation() {
     isAutoSimActive = !isAutoSimActive;
     const statusBadge = document.getElementById('modeStatus');
     const toggleBtn = document.getElementById('toggleSimBtn');
-    const manualControls = document.getElementById('manualControls');
+    
+    // Ambil elemen opsi dengan aman (karena sudah dipindah ke dalam tab)
+    const checkGangguan = document.getElementById('checkGangguanJalur');
+    const checkDinamis = document.getElementById('checkDinamisPC');
 
     if (isAutoSimActive) {
         statusBadge.className = 'status-badge status-auto';
         statusBadge.innerText = 'Mode: Simulasi Live';
         toggleBtn.className = 'btn-danger';
         toggleBtn.innerText = 'Hentikan Simulasi Live';
-        manualControls.style.opacity = '0.4';
-        manualControls.style.pointerEvents = 'none';
         log(`Simulasi live diaktifkan.`);
 
         startAutoTrafficInterval();
 
         dynamicEventInterval = setInterval(() => {
-            const isGangguanChecked = document.getElementById('checkGangguanJalur').checked;
-            if (!isGangguanChecked) return;
+            if (isPaused) return;
+            if (checkGangguan && !checkGangguan.checked) return;
 
             let allLinks = [];
             for (let i = 0; i < nodes.length; i++) {
@@ -552,8 +599,8 @@ function toggleAutoSimulation() {
         }, 5000);
 
         dynamicNodeInterval = setInterval(() => {
-            const isDinamisPCChecked = document.getElementById('checkDinamisPC').checked;
-            if (!isDinamisPCChecked) return;
+            if (isPaused) return;
+            if (checkDinamis && !checkDinamis.checked) return;
 
             let actionRand = Math.random();
             
@@ -575,8 +622,6 @@ function toggleAutoSimulation() {
         statusBadge.innerText = 'Mode: Manual';
         toggleBtn.className = 'btn-success';
         toggleBtn.innerText = 'Mulai Simulasi Live';
-        manualControls.style.opacity = '1';
-        manualControls.style.pointerEvents = 'auto';
         log(`Simulasi Live dihentikan.`);
 
         clearInterval(autoSimInterval);

@@ -7,69 +7,88 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <header>
         <h1>Simulator Topologi Jaringan: Mesh</h1>
         <span style="font-size: 0.85rem; color: #94a3b8;">Informatika XI-F</span>
     </header>
 
     <div class="container">
-        <!-- Sidebar Kiri -->
+        <!-- Sidebar Kiri (Tabbed Layout agar tidak perlu scroll) -->
         <div class="sidebar">
-            <div class="control-group">
-                <h3>Status Mode</h3>
-                <div id="modeStatus" class="status-badge status-manual">Mode: Manual</div>
-                <button id="toggleSimBtn" class="btn-success" onclick="toggleAutoSimulation()">Mulai Simulasi Live</button>
-                
-                <!-- Checkbox Kondisi-->
-                <div class="sim-options" id="simOptionsBox">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="checkGangguanJalur" checked> Munculkan Gangguan Jalur (Auto-Break/Fix)
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="checkDinamisPC"> Muncul/Hilang PC Otomatis (Min. 3 PC)
-                    </label>
+            <!-- Navigasi Tab Sidebar -->
+            <div class="sidebar-tabs">
+                <button class="tab-btn active" onclick="switchTab('sim')">Simulasi</button>
+                <button class="tab-btn" onclick="switchTab('manual')">Manual & Kabel</button>
+                <button class="tab-btn" onclick="switchTab('node')">Perangkat</button>
+            </div>
+
+            <!-- TAB 1: Kontrol Simulasi & Live -->
+            <div id="tab-sim" class="tab-content active">
+                <div class="control-group">
+                    <h3>Status Mode</h3>
+                    <div id="modeStatus" class="status-badge status-manual">Mode: Manual</div>
+                    <button id="toggleSimBtn" class="btn-success" onclick="toggleAutoSimulation()">Mulai Simulasi Live</button>
+                    <button id="pauseGlobalBtn" class="btn-warning" onclick="togglePauseSimulation()" style="margin-top: 6px; background: #b45309;">Pause Simulasi</button>
+                    
+                    <div class="sim-options" id="simOptionsBox">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="checkGangguanJalur" checked> Gangguan Jalur Otomatis
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="checkDinamisPC"> PC Dinamis (Muncul/Hilang)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Pengaturan Kecepatan</h3>
+                    <label style="font-size:0.75rem; color:#94a3b8;">Kecepatan Animasi:</label>
+                    <input type="range" id="speedSlider" min="200" max="2000" step="100" value="600" oninput="updateSpeedLabel(this.value)">
+                    <div style="font-size: 0.75rem; color: #38bdf8; text-align: right; margin-bottom: 6px;" id="speedLabel">600 ms</div>
+
+                    <label style="font-size:0.75rem; color:#94a3b8;">Frekuensi Paket:</label>
+                    <input type="range" id="freqSlider" min="200" max="2000" step="100" value="800" oninput="updateFreqLabel(this.value)">
+                    <div style="font-size: 0.75rem; color: #38bdf8; text-align: right;" id="freqLabel">800 ms (Santai)</div>
                 </div>
             </div>
 
-            <div class="control-group">
-                <h3>Pengatur Jaringan Live</h3>
-                <label style="font-size:0.75rem; color:#94a3b8;">Kecepatan Animasi:</label>
-                <input type="range" id="speedSlider" min="200" max="2000" step="100" value="600" oninput="updateSpeedLabel(this.value)">
-                <div style="font-size: 0.75rem; color: #38bdf8; text-align: right; margin-bottom: 8px;" id="speedLabel">600 ms</div>
+            <!-- TAB 2: Mode Manual & Kontrol Kabel -->
+            <div id="tab-manual" class="tab-content" style="display: none;">
+                <div class="control-group">
+                    <h3>Pengiriman Manual</h3>
+                    <label style="font-size:0.75rem; color:#94a3b8;">Asal:</label>
+                    <select id="sourceSelect"></select>
+                    
+                    <button class="btn-secondary" onclick="reverseSourceDest()" style="background: #334155; padding: 4px; font-size: 0.8rem; margin: 2px 0;">Tukar Asal ⇄ Tujuan</button>
+                    
+                    <label style="font-size:0.75rem; color:#94a3b8;">Tujuan:</label>
+                    <select id="destSelect"></select>
+                    <button onclick="simulateSmartRouting()" style="margin-top: 4px;">Kirim Paket</button>
+                </div>
 
-                <label style="font-size:0.75rem; color:#94a3b8;">Frekuensi Kirim Paket:</label>
-                <input type="range" id="freqSlider" min="200" max="2000" step="100" value="800" oninput="updateFreqLabel(this.value)">
-                <div style="font-size: 0.75rem; color: #38bdf8; text-align: right;" id="freqLabel">800 ms</div>
-            </div>
-
-            <div class="control-group" id="manualControls">
-                <h3>Mode Manual</h3>
-                <label style="font-size:0.75rem; color:#94a3b8;">Asal:</label>
-                <select id="sourceSelect"></select>
-                
-                <label style="font-size:0.75rem; color:#94a3b8;">Tujuan:</label>
-                <select id="destSelect"></select>
-                <button onclick="simulateSmartRouting()" style="margin-top: 4px;">Kirim Paket</button>
-                
-                <div style="margin-top: 10px; border-top: 1px solid #334155; padding-top: 8px;">
-                    <label style="font-size:0.75rem; color:#94a3b8;">Kontrol Kabel:</label>
+                <div class="control-group">
+                    <h3>Kontrol Kabel</h3>
+                    <label style="font-size:0.75rem; color:#94a3b8;">Pilih Kabel:</label>
                     <select id="linkSelect"></select>
-                    <button class="btn-warning" onclick="toggleLinkBreak()">Putus / Sambung Kabel</button>
-                    <button class="btn-warning" onclick="randomizeBrokenLinks()" style="background: #7c2d12;">Randomize Jalur Rusak</button>
-                    <button class="btn-secondary" onclick="resetAllLinks()" style="margin-top: 5px; background: #334155;">Pulihkan Semua Jalur</button>
+                    <button class="btn-warning" onclick="toggleLinkBreak()">Putus / Sambung</button>
+                    <button class="btn-warning" onclick="randomizeBrokenLinks()" style="background: #7c2d12; margin-top: 4px;">Acak Kabel Rusak</button>
+                    <button class="btn-secondary" onclick="resetAllLinks()" style="margin-top: 4px; background: #334155;">Pulihkan Semua</button>
                 </div>
             </div>
 
-            <div class="control-group">
-                <h3>Kelola Perangkat & Reset</h3>
-                <input type="text" id="nodeNameInput" placeholder="Nama PC (Contoh: PC 6)" value="PC 6">
-                <button onclick="addNodeManual()">Tambah PC</button>
-                <button class="btn-danger" onclick="resetAllNodes()" style="margin-top: 5px;">Reset Semua PC</button>
+            <!-- TAB 3: Kelola Perangkat -->
+            <div id="tab-node" class="tab-content" style="display: none;">
+                <div class="control-group">
+                    <h3>Kelola Perangkat</h3>
+                    <label style="font-size:0.75rem; color:#94a3b8;">Nama Perangkat Baru:</label>
+                    <input type="text" id="nodeNameInput" placeholder="Contoh: PC 6" value="PC 6">
+                    <button onclick="addNodeManual()">Tambah PC</button>
+                    <button class="btn-danger" onclick="resetAllNodes()" style="margin-top: 8px;">Reset Semua PC</button>
+                </div>
             </div>
         </div>
 
-        <!-- Canvas / Visualisasi -->
+        <!-- Canvas / Visualisasi (Memenuhi sisa ruang dengan pas) -->
         <div class="canvas-container" id="canvasContainer">
             <svg id="svgCanvas"></svg>
         </div>
@@ -84,7 +103,18 @@
                 <div class="log-box-right" id="logBox"></div>
             </div>
         </div>
+    </div>
 
+    <!-- Script Tab Switcher -->
+    <script>
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('tab-' + tabName).style.display = 'block';
+            event.currentTarget.classList.add('active');
+        }
+    </script>
     <script src="script.js"></script>
 </body>
 </html>
